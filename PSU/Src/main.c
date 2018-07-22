@@ -1,3 +1,41 @@
+
+/**
+  ******************************************************************************
+  * @file           : main.c
+  * @brief          : Main program body
+  ******************************************************************************
+  ** This notice applies to any and all portions of this file
+  * that are not between comment pairs USER CODE BEGIN and
+  * USER CODE END. Other portions of this file, whether 
+  * inserted by the user or by software development tools
+  * are owned by their respective copyright owners.
+  *
+  * COPYRIGHT(c) 2018 STMicroelectronics
+  *
+  * Redistribution and use in source and binary forms, with or without modification,
+  * are permitted provided that the following conditions are met:
+  *   1. Redistributions of source code must retain the above copyright notice,
+  *      this list of conditions and the following disclaimer.
+  *   2. Redistributions in binary form must reproduce the above copyright notice,
+  *      this list of conditions and the following disclaimer in the documentation
+  *      and/or other materials provided with the distribution.
+  *   3. Neither the name of STMicroelectronics nor the names of its contributors
+  *      may be used to endorse or promote products derived from this software
+  *      without specific prior written permission.
+  *
+  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  *
+  ******************************************************************************
+  */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32f4xx_hal.h"
@@ -7,19 +45,41 @@
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
+SPI_HandleTypeDef hspi1;
+DMA_HandleTypeDef hdma_spi1_rx;
+DMA_HandleTypeDef hdma_spi1_tx;
+
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim5;
 
+UART_HandleTypeDef huart2;
+
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
+uint16_t SPI_tx[1]; //ADC Readings
+uint16_t SPI_rx[1]; //ADC Readings
+
+uint16_t duty_cycle_LED = 50;
+
+uint16_t duty_cycle_channel_A = 0;
+uint16_t duty_cycle_channel_B = 0;
+
+uint16_t enable_channel_A = 0;
+uint16_t enable_channel_B = 0;
+
+uint16_t enable_channels = 0;
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_TIM1_Init(void);
-static void MX_TIM5_Init(void);                                    
+static void MX_TIM5_Init(void);
+static void MX_SPI1_Init(void);
+static void MX_USART2_UART_Init(void);
+                                    
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
                                 
                                 
@@ -62,23 +122,84 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_TIM1_Init();
   MX_TIM5_Init();
+  MX_SPI1_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
+
+
+  /********** TIM 1 PWM 1 CONF****************/
+  // Set the period
+  __HAL_TIM_SET_AUTORELOAD(&htim1, 50000);
+  // Set the prescaler
+  __HAL_TIM_SET_PRESCALER(&htim1, 168-1);
+  // Set the duty cycle
+  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, duty_cycle_LED);
+
+  if (HAL_TIM_Base_Start(&htim1) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  if (HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1) != HAL_OK)
+  {
+	_Error_Handler(__FILE__, __LINE__);
+  }
+
+  /********** TIM 5 PWM 1 CONF****************/
+
+  //duty_cycle_channel_A, duty_cycle_channel_B = 56;//30 % of 280
+
+  // Set the period
+  __HAL_TIM_SET_AUTORELOAD(&htim5, 280);
+  // Set the prescaler
+  __HAL_TIM_SET_PRESCALER(&htim5, 0);
+  // Set the duty cycle
+  __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_1, duty_cycle_channel_A);
+  __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_4, duty_cycle_channel_B);
+
+  if (HAL_TIM_Base_Start(&htim5) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  if (HAL_TIM_PWM_Start(&htim5,TIM_CHANNEL_1) != HAL_OK)
+  {
+	_Error_Handler(__FILE__, __LINE__);
+  }
+
+
+  if (HAL_TIM_PWM_Start(&htim5,TIM_CHANNEL_4) != HAL_OK)
+  {
+	_Error_Handler(__FILE__, __LINE__);
+  }
+
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_RESET);
+
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_RESET);
+
+  SPI_tx[0] = 42;
+  //  HAL_SPI_Receive_DMA(&hspi1, (uint16_t*)&SPI_rx, 1);
+
+  HAL_SPI_Transmit_DMA(&hspi1, (uint16_t*)&SPI_tx, 1);
+
+  HAL_SPI_Receive_DMA(&hspi1, (uint16_t*)&SPI_rx, 1);
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  int pulse = 56;
   while (1)
   {
 
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-	  HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_0);
-	  //HAL_Delay(15000);
+
+
+	  //HAL_Delay(500);
 	  //user_pwm_setvalue((53*perc)/100);
 /*	  __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_1, pulse);
 	  __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_4, pulse);
@@ -153,6 +274,29 @@ void SystemClock_Config(void)
   HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
 }
 
+/* SPI1 init function */
+static void MX_SPI1_Init(void)
+{
+
+  /* SPI1 parameter configuration*/
+  hspi1.Instance = SPI1;
+  hspi1.Init.Mode = SPI_MODE_SLAVE;
+  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi1.Init.DataSize = SPI_DATASIZE_16BIT;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.NSS = SPI_NSS_HARD_INPUT;
+  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi1.Init.CRCPolynomial = 10;
+  if (HAL_SPI_Init(&hspi1) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+}
+
 /* TIM1 init function */
 static void MX_TIM1_Init(void)
 {
@@ -163,9 +307,9 @@ static void MX_TIM1_Init(void)
   TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig;
 
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 168-1;// 84Mhz/168=0.5 Mhz = 500 000 Hz
+  htim1.Init.Prescaler = 0;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 50000;
+  htim1.Init.Period = 0;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
@@ -192,7 +336,7 @@ static void MX_TIM1_Init(void)
   }
 
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 50;
+  sConfigOC.Pulse = 0;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
@@ -217,9 +361,6 @@ static void MX_TIM1_Init(void)
 
   HAL_TIM_MspPostInit(&htim1);
 
-  HAL_TIM_Base_Start(&htim1);
-  HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
-
 }
 
 /* TIM5 init function */
@@ -233,7 +374,7 @@ static void MX_TIM5_Init(void)
   htim5.Instance = TIM5;
   htim5.Init.Prescaler = 0;
   htim5.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim5.Init.Period = 280;
+  htim5.Init.Period = 0;
   htim5.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   if (HAL_TIM_Base_Init(&htim5) != HAL_OK)
   {
@@ -259,7 +400,7 @@ static void MX_TIM5_Init(void)
   }
 
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 56;//30 % of 280
+  sConfigOC.Pulse = 0;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_PWM_ConfigChannel(&htim5, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
@@ -267,59 +408,78 @@ static void MX_TIM5_Init(void)
     _Error_Handler(__FILE__, __LINE__);
   }
 
-  if (HAL_TIM_PWM_ConfigChannel(&htim5, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
+  HAL_TIM_MspPostInit(&htim5);
+
+}
+
+/* USART2 init function */
+static void MX_USART2_UART_Init(void)
+{
+
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
   }
 
-  HAL_TIM_MspPostInit(&htim5);
-
-  HAL_TIM_Base_Start(&htim5);
-  HAL_TIM_PWM_Start(&htim5,TIM_CHANNEL_1);
-  HAL_TIM_PWM_Start(&htim5,TIM_CHANNEL_4);
 }
 
-/** Pinout Configuration
+/** 
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void) 
+{
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA2_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA2_Stream0_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+  /* DMA2_Stream3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
+
+}
+
+/** Configure pins as 
+        * Analog 
+        * Input 
+        * Output
+        * EVENT_OUT
+        * EXTI
 */
 static void MX_GPIO_Init(void)
 {
 
+  GPIO_InitTypeDef GPIO_InitStruct;
 
-	  GPIO_InitTypeDef GPIO_InitStruct;
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2, GPIO_PIN_RESET);
 
-/* GPIO Ports Clock Enable */
-__HAL_RCC_GPIOA_CLK_ENABLE();
+  /*Configure GPIO pins : PC0 PC1 PC2 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-	/* GPIO Ports Clock Enable */
-__HAL_RCC_GPIOC_CLK_ENABLE();
-
-/*Configure GPIO pin : PC0 */
-GPIO_InitStruct.Pin = GPIO_PIN_0;
-GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-GPIO_InitStruct.Pull = GPIO_NOPULL;
-GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
-/*Configure GPIO pin : PC0 */
-GPIO_InitStruct.Pin = GPIO_PIN_1;
-GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-GPIO_InitStruct.Pull = GPIO_NOPULL;
-GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
-GPIO_InitStruct.Pin = GPIO_PIN_2;
-GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-GPIO_InitStruct.Pull = GPIO_NOPULL;
-GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
-HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_SET);
-
-HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET);
 }
 
+/* USER CODE BEGIN 4 */
 
+/* USER CODE END 4 */
 
 /**
   * @brief  This function is executed in case of error occurrence.
@@ -362,3 +522,4 @@ void assert_failed(uint8_t* file, uint32_t line)
   * @}
   */
 
+/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
