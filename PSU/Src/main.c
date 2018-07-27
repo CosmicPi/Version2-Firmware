@@ -59,15 +59,20 @@ UART_HandleTypeDef huart2;
 uint16_t SPI_tx[1]; //ADC Readings
 uint16_t SPI_rx[1]; //ADC Readings
 
-uint16_t duty_cycle_LED = 50;
+//uint16_t duty_cycle_LED = 50;
 
-uint16_t duty_cycle_channel_A = 0;
-uint16_t duty_cycle_channel_B = 0;
+uint16_t duty_cycle_LED = 0;
 
-uint16_t enable_channel_A = 0;
-uint16_t enable_channel_B = 0;
+//uint32_t duty_cycle_channel_A = 56;
+uint32_t duty_cycle_channel_A = 0;
 
-uint16_t enable_channels = 0;
+//uint32_t duty_cycle_channel_B = 56;
+uint32_t duty_cycle_channel_B = 0;
+
+uint8_t enable_channel_A = 0;
+uint8_t enable_channel_B = 0;
+
+uint8_t enable_channels = 0;
 
 /* USER CODE END PV */
 
@@ -180,12 +185,15 @@ int main(void)
 
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_RESET);
 
-  SPI_tx[0] = 42;
+  SPI_tx[0] = 255;
   //  HAL_SPI_Receive_DMA(&hspi1, (uint16_t*)&SPI_rx, 1);
 
-  HAL_SPI_Transmit_DMA(&hspi1, (uint16_t*)&SPI_tx, 1);
+	//while(HAL_SPI_GetState(&hspi1) != HAL_SPI_STATE_READY){}
+  //HAL_SPI_Receive_DMA(&hspi1,(uint8_t*)&SPI_rx, 1);
 
-  HAL_SPI_Receive_DMA(&hspi1, (uint16_t*)&SPI_rx, 1);
+   HAL_SPI_TransmitReceive_DMA(&hspi1, (uint16_t*)&SPI_tx, (uint16_t*)&SPI_rx, 1);
+
+  //HAL_SPI_Transmit_DMA(&hspi1, (uint16_t*)&SPI_tx, 1);
 
   /* USER CODE END 2 */
 
