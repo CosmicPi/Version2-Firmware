@@ -74,6 +74,25 @@ uint8_t enable_channel_B = 0;
 
 uint8_t enable_channels = 0;
 
+uint8_t spi_transmit_receive;
+
+uint16_t new_spi_value = 0;
+uint16_t old_spi_value = 0;
+uint16_t ack = 0;
+uint8_t command = 0;
+uint16_t rx = 0;
+uint16_t number_of_values_received = 0;
+uint8_t state = 0;
+uint16_t rx_values[2];
+uint16_t value6=0;
+uint16_t value7=0;
+uint16_t value8=0;
+uint16_t value9=0;
+uint16_t value10=0;
+
+
+char buffer[32];
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -191,7 +210,15 @@ int main(void)
 	//while(HAL_SPI_GetState(&hspi1) != HAL_SPI_STATE_READY){}
   //HAL_SPI_Receive_DMA(&hspi1,(uint8_t*)&SPI_rx, 1);
 
-   HAL_SPI_TransmitReceive_DMA(&hspi1, (uint16_t*)&SPI_tx, (uint16_t*)&SPI_rx, 1);
+   if(HAL_SPI_TransmitReceive_DMA(&hspi1, (uint16_t*)&SPI_tx, (uint16_t*)&SPI_rx, 1) != HAL_OK)
+   {
+       /* Transfer error in transmission process */
+       Error_Handler();
+   }
+
+   while (HAL_SPI_GetState(&hspi1) != HAL_SPI_STATE_READY)
+    {
+    }
 
   //HAL_SPI_Transmit_DMA(&hspi1, (uint16_t*)&SPI_tx, 1);
 
@@ -206,6 +233,215 @@ int main(void)
 
   /* USER CODE BEGIN 3 */
 
+	  if (spi_transmit_receive == 1 ){
+
+
+		  spi_transmit_receive = 0;
+
+			old_spi_value = new_spi_value;
+			new_spi_value = SPI_rx[0];
+			rx_values[state]=new_spi_value;
+
+					switch(state){
+
+					case 0:
+
+						//valid command
+						if (new_spi_value<13 && new_spi_value>0){
+							command = new_spi_value;
+							ack = command;
+						}else{
+							ack = new_spi_value;
+
+						}
+						state = 1;
+
+						break;
+
+					case 1:
+
+
+
+						if(command == 1){
+
+									if (number_of_values_received==1){
+									//duty_cycle_channel_A = new_spi_value << 16;
+									duty_cycle_channel_A = rx_values[state^1];
+									duty_cycle_channel_A = duty_cycle_channel_A << 16;
+									}
+
+
+									ack = new_spi_value;
+									//value6 = rx_values[state^1];
+								}else if(command==2){
+
+									//duty_cycle_channel_A = duty_cycle_channel_A | new_spi_value ;
+
+									if (number_of_values_received==1){
+									duty_cycle_channel_A = duty_cycle_channel_A | rx_values[state^1] ;
+
+
+
+									  __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_1, duty_cycle_channel_A);
+									}
+
+									ack = new_spi_value;
+									value7 = rx_values[state^1];
+								}else if(command==3){
+
+									//duty_cycle_channel_B = new_spi_value << 16;
+									if (number_of_values_received==1){
+									duty_cycle_channel_B = rx_values[state^1];
+									duty_cycle_channel_B = duty_cycle_channel_B << 16;
+									}
+									ack = new_spi_value;
+
+									//value8 = rx_values[state^1];
+								}else if(command==4){
+									//duty_cycle_channel_B = duty_cycle_channel_B | new_spi_value ;
+
+									if (number_of_values_received==1){
+									duty_cycle_channel_B = duty_cycle_channel_B | rx_values[state^1] ;
+
+
+								  __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_4, duty_cycle_channel_B);
+									}
+									ack = new_spi_value;
+									value9 = rx_values[state^1];
+
+								}else if(command==5){
+									//duty_cycle_LED = new_spi_value;
+									if (number_of_values_received==1){
+									duty_cycle_LED = rx_values[state^1];
+
+									 __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, duty_cycle_LED);
+									}
+									ack = new_spi_value;
+									//value10 = rx_values[state^1];
+								}else if(command==6){
+
+									ack = __HAL_TIM_GET_COMPARE(&htim5, TIM_CHANNEL_1) >> 16;
+									//ack= value6;
+								}else if(command==7){
+									ack = __HAL_TIM_GET_COMPARE(&htim5, TIM_CHANNEL_1) & 0x0000FFFF;
+									//ack = value7;
+								}else if(command==8){
+									ack = __HAL_TIM_GET_COMPARE(&htim5, TIM_CHANNEL_4) >> 16;
+									//ack = value8;
+								}else if(command==9){
+									ack = __HAL_TIM_GET_COMPARE(&htim5, TIM_CHANNEL_4) & 0x0000FFFF;
+									//ack= value9;
+								}else if(command==10){
+									ack = __HAL_TIM_GET_COMPARE(&htim1, TIM_CHANNEL_1);
+									//ack = value10;
+								}else if(command==11){
+									//enable_channels = new_spi_value;
+									enable_channels = rx_values[state^1];
+
+								  enable_channel_A = enable_channels & 1;
+								  enable_channel_B = enable_channels>>1 & 1;
+
+									ack = new_spi_value;
+								}else if(command==12){
+									ack = enable_channels;
+								}
+
+								state = 0;
+
+								if(number_of_values_received==1)
+									number_of_values_received = 0;
+								else
+									number_of_values_received ++;
+
+					default:
+						break;
+
+
+					}
+
+
+
+					/*snprintf(buffer, 32, "%d", SPI_rx[0]);
+					debugPrintln(&huart2, buffer);
+
+
+					snprintf(buffer, 32, "%d", state);
+					debugPrintln(&huart2, buffer);
+
+					snprintf(buffer, 32, "ack %d", ack);
+					debugPrintln(&huart2, buffer);
+
+					snprintf(buffer, 32, "new spi %d", new_spi_value);
+					debugPrintln(&huart2, buffer);
+
+					snprintf(buffer, 32, "old spi %d", new_spi_value);
+					debugPrintln(&huart2, buffer);
+		*/
+					snprintf(buffer, 32, "cmd %d", command);
+					debugPrintln(&huart2, buffer);
+
+					snprintf(buffer, 32, "state %d", state);
+					debugPrintln(&huart2, buffer);
+
+					snprintf(buffer, 32, "rx value %d", rx_values[state]);
+					debugPrintln(&huart2, buffer);
+
+
+
+		/*
+					snprintf(buffer, 32, "%d", SPI_rx[1]);
+					debugPrintln(&huart2, buffer);
+
+					snprintf(buffer, 32, "%d", SPI_rx[2]);
+					debugPrintln(&huart2, buffer);
+
+					snprintf(buffer, 32, "%d", SPI_rx[3]);
+					debugPrintln(&huart2, buffer);
+
+					snprintf(buffer, 32, "%d", SPI_rx[4]);
+					debugPrintln(&huart2, buffer);*/
+
+			 /* __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, duty_cycle_LED);
+
+			  __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_1, duty_cycle_channel_A);
+			  __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_4, duty_cycle_channel_B);
+
+			  if (enable_channel_A)
+				  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_SET);
+			  else
+				  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_RESET);
+
+			  if (enable_channel_B)
+				  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET);
+			  else
+				  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_RESET);
+		*/
+
+
+
+					SPI_tx[0]=ack;
+
+					//if(new_spi_value !=255)
+						rx^=1;
+
+
+						debugPrintln(&huart2, "");
+					  //HAL_SPI_Transmit_DMA(&hspi1, (uint16_t*)&SPI_tx, 1);
+
+						  while (HAL_SPI_GetState(&hspi1) != HAL_SPI_STATE_READY)
+						{
+						}
+
+					  if(HAL_SPI_TransmitReceive_DMA(&hspi1, (uint16_t*)&SPI_tx, (uint16_t*)&SPI_rx, 1) != HAL_OK)
+					   {
+						   /* Transfer error in transmission process */
+						   Error_Handler();
+					   }
+
+
+		  //HAL_SPI_Receive_DMA(&hspi1, (uint16_t*)&SPI_rx, 1);
+
+	  }
 
 	  //HAL_Delay(500);
 	  //user_pwm_setvalue((53*perc)/100);
