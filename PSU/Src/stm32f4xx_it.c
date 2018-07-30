@@ -46,10 +46,15 @@ extern TIM_HandleTypeDef htim5;
 
 extern uint8_t spi_transmit_receive;
 
+extern uint16_t ADCReadings[2]; //ADC Readings
+//extern uint16_t ADC_DMA_buffer[2]; //ADC Readings
+
+extern uint8_t adc_completed; //ADC Readings
 
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern DMA_HandleTypeDef hdma_adc1;
 extern DMA_HandleTypeDef hdma_spi1_rx;
 extern DMA_HandleTypeDef hdma_spi1_tx;
 
@@ -87,10 +92,24 @@ void DMA2_Stream0_IRQHandler(void)
   /* USER CODE BEGIN DMA2_Stream0_IRQn 0 */
 
   /* USER CODE END DMA2_Stream0_IRQn 0 */
-  HAL_DMA_IRQHandler(&hdma_spi1_rx);
+  HAL_DMA_IRQHandler(&hdma_adc1);
   /* USER CODE BEGIN DMA2_Stream0_IRQn 1 */
 
   /* USER CODE END DMA2_Stream0_IRQn 1 */
+}
+
+/**
+* @brief This function handles DMA2 stream2 global interrupt.
+*/
+void DMA2_Stream2_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA2_Stream2_IRQn 0 */
+
+  /* USER CODE END DMA2_Stream2_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_spi1_rx);
+  /* USER CODE BEGIN DMA2_Stream2_IRQn 1 */
+
+  /* USER CODE END DMA2_Stream2_IRQn 1 */
 }
 
 /**
@@ -107,8 +126,6 @@ void DMA2_Stream3_IRQHandler(void)
   /* USER CODE END DMA2_Stream3_IRQn 1 */
 }
 
-
-
 /* USER CODE BEGIN 1 */
 
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
@@ -117,10 +134,35 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
 
 }
 
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
+{
+
+/*
+	char buffer[32];
+	snprintf(buffer, 32, "Channel 1 : %d", ADCReadings[0]);
+	debugPrintln(&huart2, buffer);
+
+	snprintf(buffer, 32, "Channel 2 : %d", ADCReadings[1]);
+	debugPrintln(&huart2, buffer);
+
+	debugPrintln(&huart2, "\n");
+*/
+
+	//ADCReadings[0] = ADC_DMA_buffer[0];
+	//ADCReadings[1] = ADC_DMA_buffer[1];
+	adc_completed=1;
+
+
+
+
+}
+/*
 void debugPrintln(UART_HandleTypeDef *huart, char _out[]){
  HAL_UART_Transmit(huart, (uint8_t *) _out, strlen(_out), 10);
  char newline[2] = "\r\n";
  HAL_UART_Transmit(huart, (uint8_t *) newline, 2, 10);
 }
+*/
 /* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

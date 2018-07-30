@@ -20,6 +20,8 @@ Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc_ex.o: \
  D:/sabri/MasterWork/Cosmic\ Pi\ V2\ firmware/PSU/Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_dma.h \
  D:/sabri/MasterWork/Cosmic\ Pi\ V2\ firmware/PSU/Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_dma_ex.h \
  D:/sabri/MasterWork/Cosmic\ Pi\ V2\ firmware/PSU/Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_cortex.h \
+ D:/sabri/MasterWork/Cosmic\ Pi\ V2\ firmware/PSU/Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_adc.h \
+ D:/sabri/MasterWork/Cosmic\ Pi\ V2\ firmware/PSU/Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_adc_ex.h \
  D:/sabri/MasterWork/Cosmic\ Pi\ V2\ firmware/PSU/Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_flash.h \
  D:/sabri/MasterWork/Cosmic\ Pi\ V2\ firmware/PSU/Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_flash_ex.h \
  D:/sabri/MasterWork/Cosmic\ Pi\ V2\ firmware/PSU/Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_flash_ramfunc.h \
@@ -69,6 +71,10 @@ D:/sabri/MasterWork/Cosmic\ Pi\ V2\ firmware/PSU/Drivers/STM32F4xx_HAL_Driver/In
 D:/sabri/MasterWork/Cosmic\ Pi\ V2\ firmware/PSU/Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_dma_ex.h:
 
 D:/sabri/MasterWork/Cosmic\ Pi\ V2\ firmware/PSU/Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_cortex.h:
+
+D:/sabri/MasterWork/Cosmic\ Pi\ V2\ firmware/PSU/Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_adc.h:
+
+D:/sabri/MasterWork/Cosmic\ Pi\ V2\ firmware/PSU/Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_adc_ex.h:
 
 D:/sabri/MasterWork/Cosmic\ Pi\ V2\ firmware/PSU/Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_flash.h:
 

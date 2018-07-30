@@ -45,14 +45,15 @@
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
+ADC_HandleTypeDef hadc1;
+DMA_HandleTypeDef hdma_adc1;
+
 SPI_HandleTypeDef hspi1;
 DMA_HandleTypeDef hdma_spi1_rx;
 DMA_HandleTypeDef hdma_spi1_tx;
 
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim5;
-
-UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
@@ -90,6 +91,10 @@ uint16_t value8=0;
 uint16_t value9=0;
 uint16_t value10=0;
 
+uint16_t ADCReadings[2]; //ADC Readings
+uint16_t ADC_DMA_buffer[2]; //ADC Readings
+
+uint8_t adc_completed=0; //ADC Readings
 
 char buffer[32];
 
@@ -102,8 +107,8 @@ static void MX_DMA_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM5_Init(void);
 static void MX_SPI1_Init(void);
-static void MX_USART2_UART_Init(void);
-                                    
+static void MX_ADC1_Init(void);
+
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
                                 
                                 
@@ -150,7 +155,7 @@ int main(void)
   MX_TIM1_Init();
   MX_TIM5_Init();
   MX_SPI1_Init();
-  MX_USART2_UART_Init();
+  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
 
 
@@ -222,6 +227,9 @@ int main(void)
 
   //HAL_SPI_Transmit_DMA(&hspi1, (uint16_t*)&SPI_tx, 1);
 
+
+   HAL_ADC_Start_DMA(&hadc1, (uint32_t*) ADCReadings, 2);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -247,7 +255,7 @@ int main(void)
 					case 0:
 
 						//valid command
-						if (new_spi_value<13 && new_spi_value>0){
+						if (new_spi_value<15 && new_spi_value>0){
 							command = new_spi_value;
 							ack = command;
 						}else{
@@ -336,15 +344,22 @@ int main(void)
 									//ack = value10;
 								}else if(command==11){
 									//enable_channels = new_spi_value;
-									enable_channels = rx_values[state^1];
+									if (number_of_values_received==1){
+										enable_channels = rx_values[state^1];
 
-								  enable_channel_A = enable_channels & 1;
-								  enable_channel_B = enable_channels>>1 & 1;
+										enable_channel_A = enable_channels & 1;
+								  	  enable_channel_B = enable_channels>>1 & 1;
+									}
 
 									ack = new_spi_value;
 								}else if(command==12){
 									ack = enable_channels;
+								}else if(command==13){
+									ack = ADCReadings[0];
+								}else if(command==14){
+									ack = ADCReadings[1];
 								}
+
 
 								state = 0;
 
@@ -376,7 +391,10 @@ int main(void)
 
 					snprintf(buffer, 32, "old spi %d", new_spi_value);
 					debugPrintln(&huart2, buffer);
-		*/
+
+					snprintf(buffer, 32, "ack %d", ack);
+					debugPrintln(&huart2, buffer);
+
 					snprintf(buffer, 32, "cmd %d", command);
 					debugPrintln(&huart2, buffer);
 
@@ -385,7 +403,7 @@ int main(void)
 
 					snprintf(buffer, 32, "rx value %d", rx_values[state]);
 					debugPrintln(&huart2, buffer);
-
+*/
 
 
 		/*
@@ -516,6 +534,52 @@ void SystemClock_Config(void)
 
   /* SysTick_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
+}
+
+/* ADC1 init function */
+static void MX_ADC1_Init(void)
+{
+
+  ADC_ChannelConfTypeDef sConfig;
+
+    /**Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion) 
+    */
+  hadc1.Instance = ADC1;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
+  hadc1.Init.Resolution = ADC_RESOLUTION_12B;
+  hadc1.Init.ScanConvMode = ENABLE;
+  hadc1.Init.ContinuousConvMode = ENABLE;
+  hadc1.Init.DiscontinuousConvMode = DISABLE;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc1.Init.NbrOfConversion = 2;
+  hadc1.Init.DMAContinuousRequests = ENABLE;
+  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+    /**Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time. 
+    */
+  sConfig.Channel = ADC_CHANNEL_1;
+  sConfig.Rank = 1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_480CYCLES;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+    /**Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time. 
+    */
+  sConfig.Channel = ADC_CHANNEL_2;
+  sConfig.Rank = 2;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
 }
 
 /* SPI1 init function */
@@ -652,26 +716,12 @@ static void MX_TIM5_Init(void)
     _Error_Handler(__FILE__, __LINE__);
   }
 
-  HAL_TIM_MspPostInit(&htim5);
-
-}
-
-/* USART2 init function */
-static void MX_USART2_UART_Init(void)
-{
-
-  huart2.Instance = USART2;
-  huart2.Init.BaudRate = 115200;
-  huart2.Init.WordLength = UART_WORDLENGTH_8B;
-  huart2.Init.StopBits = UART_STOPBITS_1;
-  huart2.Init.Parity = UART_PARITY_NONE;
-  huart2.Init.Mode = UART_MODE_TX_RX;
-  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
-  if (HAL_UART_Init(&huart2) != HAL_OK)
+  if (HAL_TIM_PWM_ConfigChannel(&htim5, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
   }
+
+  HAL_TIM_MspPostInit(&htim5);
 
 }
 
@@ -687,6 +737,9 @@ static void MX_DMA_Init(void)
   /* DMA2_Stream0_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+  /* DMA2_Stream2_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
   /* DMA2_Stream3_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
