@@ -349,6 +349,11 @@ int main(void)
 
 										enable_channel_A = enable_channels & 1;
 								  	  enable_channel_B = enable_channels>>1 & 1;
+
+								  	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, enable_channel_A);
+
+								  	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, enable_channel_B);
+
 									}
 
 									ack = new_spi_value;
