@@ -37,7 +37,7 @@
 
 /* USER CODE BEGIN 0 */
 
-extern UART_HandleTypeDef huart2;
+//extern UART_HandleTypeDef huart2;
 extern SPI_HandleTypeDef hspi1;
 
 extern TIM_HandleTypeDef htim1;
