@@ -80,8 +80,12 @@ uint32_t HV_PWM_frequency = 0;
 
 uint8_t spi_transmit_receive;
 
+uint32_t spi_received_value;
+uint8_t spi_began = 0;
+
 uint16_t ack = 0;
 uint8_t command = 0;
+uint8_t command_treated = 0;
 uint16_t data = 0;
 uint8_t is_a_command = 1;
 
@@ -234,18 +238,40 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
+  // Switch attention basé sur la valeur recue, prévoir un cas qui identifie si c value ou command
 
 	  if (spi_transmit_receive == 1 ){
 
 
 		  spi_transmit_receive = 0;
 
-		  	if (is_a_command)
+		  	/*if (is_a_command)
 		  		command = SPI_rx[0];
 		  	else
 		  		data = SPI_rx[0];
+		  	 */
+		  	spi_received_value = SPI_rx[0];
+
+		  	command = 0;
 
 			switch(command){
+
+					case 0:
+						  if (spi_received_value > 0 && spi_received_value < 19){
+							  command = spi_received_value;
+							  command_treated = command;
+							  is_a_command = 1;
+						  }else{
+
+							  is_a_command = 0;
+							  data = spi_received_value;
+							  command = command_treated;
+
+							  if (spi_began == 0){
+								  ack = 0;
+								  break;
+							  }
+						  }
 
 					// Set Duty cycle MSB for the PWM of HV1
 					case 1:
@@ -268,6 +294,7 @@ int main(void)
 							duty_cycle_channel_A = duty_cycle_channel_A | data ;
 						  __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_1, duty_cycle_channel_A);
 
+						  	duty_cycle_channel_A = 0;
 							ack = 0;
 							}
 
@@ -297,6 +324,8 @@ int main(void)
 							duty_cycle_channel_B = duty_cycle_channel_B | data ;
 						  __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_4, duty_cycle_channel_B);
 
+						  duty_cycle_channel_B = 0;
+
 							ack = 0;
 
 						}
@@ -310,6 +339,8 @@ int main(void)
 						}else{
 							duty_cycle_LED = data;
 							 __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, duty_cycle_LED);
+
+							 duty_cycle_LED = 0;
 
 							 ack=0;
 						}
@@ -357,12 +388,19 @@ int main(void)
 						}else{
 							enable_channels = data;
 
-							enable_channel_A = enable_channels & 1;
-							enable_channel_B = enable_channels>>1 & 1;
+							enable_channel_A = data & 1;
+							enable_channel_B = data>>1 & 1;
 
-							HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, enable_channel_A);
+							if (enable_channel_A == 1)
+								HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_SET);
+							else
+								HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_RESET);
 
-							HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, enable_channel_B);
+							if (enable_channel_B == 1)
+								HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET);
+							else
+								HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_RESET);
+
 							ack = 0;
 						}
 
@@ -430,6 +468,7 @@ int main(void)
 						break;
 
 					default:
+						ack = 0;
 						break;
 
 
@@ -456,7 +495,7 @@ int main(void)
 					SPI_tx[0]=ack;
 
 					is_a_command ^= 1;
-
+					spi_began = 1;
 
 				  while (HAL_SPI_GetState(&hspi1) != HAL_SPI_STATE_READY)
 					{
