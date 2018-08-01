@@ -256,8 +256,11 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *tim_handle)
 
 				//__HAL_TIM_SetCounter(tim_handle, 0);    //reset counter after input capture interrupt occurs
 
-
+				// LED event notification
 				HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_2);
+
+				// FLAG0 event notification
+				HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_8);
 
 				//uint16_t this_tach_timer_value = HAL_TIM_ReadCapturedValue(tim_handle, TIM_CHANNEL_1);
 
