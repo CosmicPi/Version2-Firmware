@@ -383,6 +383,7 @@ int main(void)
 							ack=command;
 						}else{
 
+							enable_channels = data;
 							enable_channel_A = data & 1;
 							enable_channel_B = data>>1 & 1;
 
