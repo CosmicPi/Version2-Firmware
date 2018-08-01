@@ -80,12 +80,12 @@ uint32_t HV_PWM_frequency = 0;
 
 uint8_t spi_transmit_receive;
 
-uint32_t spi_received_value;
+uint16_t spi_received_value;
 uint8_t spi_began = 0;
 uint8_t state = 1;
 
 uint16_t ack = 0;
-uint8_t command = 0;
+uint16_t command = 0;
 uint8_t command_treated = 0;
 uint16_t data = 0;
 uint8_t is_a_command = 1;
@@ -256,7 +256,7 @@ int main(void)
 			switch(state){
 
 					case 1:
-						  if (spi_received_value > 0 && spi_received_value < 19){
+						  if ((spi_received_value > 0) & (spi_received_value < 19)){
 							  command = spi_received_value;
 							  is_a_command = 1;
 						  }else{
@@ -326,7 +326,7 @@ int main(void)
 								// Delete old LSB
 								duty_cycle_channel_B = duty_cycle_channel_B & 0xFFFF0000;
 								// Set the new one
-								duty_cycle_channel_B = duty_cycle_channel_A | data ;
+								duty_cycle_channel_B = duty_cycle_channel_B | data ;
 
 							  __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_4, duty_cycle_channel_B);
 
@@ -364,7 +364,7 @@ int main(void)
 
 							ack = __HAL_TIM_GET_COMPARE(&htim5, TIM_CHANNEL_4) >> 16;
 
-						// Get Duty cycle MSB for the PWM of HV2
+						// Get Duty cycle LSB for the PWM of HV2
 						}else if (command == 9){
 
 							ack = __HAL_TIM_GET_COMPARE(&htim5, TIM_CHANNEL_4) & 0x0000FFFF;
@@ -455,7 +455,7 @@ int main(void)
 
 					}
 
-			/*
+/*
 			snprintf(buffer, 32, "is a command %d", is_a_command);
 			debugPrintln(&huart2, buffer);
 
@@ -468,9 +468,10 @@ int main(void)
 					snprintf(buffer, 32, "cmd %d", command);
 					debugPrintln(&huart2, buffer);
 
+					debugPrintln(&huart2, "");
+
 
 */
-
 
 
 					SPI_tx[0]=ack;
