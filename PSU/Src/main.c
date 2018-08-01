@@ -54,8 +54,6 @@ DMA_HandleTypeDef hdma_spi1_tx;
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim5;
 
-UART_HandleTypeDef huart2;
-
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 uint16_t SPI_tx[1]; //ADC Readings
@@ -109,7 +107,6 @@ static void MX_TIM1_Init(void);
 static void MX_TIM5_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_ADC1_Init(void);
-static void MX_USART2_UART_Init(void);
 
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
                                 
@@ -158,7 +155,6 @@ int main(void)
   MX_TIM5_Init();
   MX_SPI1_Init();
   MX_ADC1_Init();
-  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
 
@@ -287,6 +283,8 @@ int main(void)
 							temp_MSB = data;
 							duty_cycle_channel_A = (temp_MSB << 16) | duty_cycle_channel_A;
 
+							  __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_1, duty_cycle_channel_A);
+
 							ack=0;
 						}
 
@@ -322,6 +320,8 @@ int main(void)
 							// Set the new one
 							temp_MSB = data;
 							duty_cycle_channel_B = (temp_MSB << 16) | duty_cycle_channel_B;
+
+						  __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_4, duty_cycle_channel_B);
 
 							ack = 0;
 
@@ -447,7 +447,15 @@ int main(void)
 						if(is_a_command){
 							ack=command;
 						}else{
-							HV_PWM_frequency = data << 16;
+
+							// Delete old MSB
+							HV_PWM_frequency = HV_PWM_frequency & 0x0000FFFF;
+							// Set the new one
+							temp_MSB = data;
+							HV_PWM_frequency = (temp_MSB << 16) | HV_PWM_frequency;
+
+							  __HAL_TIM_SET_AUTORELOAD(&htim5, HV_PWM_frequency);
+
 							ack=0;
 						}
 
@@ -461,7 +469,11 @@ int main(void)
 						if(is_a_command){
 							ack=command;
 						}else{
+							// Delete old LSB
+							HV_PWM_frequency = HV_PWM_frequency & 0xFFFF0000;
+							// Set the new one
 							HV_PWM_frequency = HV_PWM_frequency | data ;
+
 						  __HAL_TIM_SET_AUTORELOAD(&htim5, HV_PWM_frequency);
 
 							ack = 0;
@@ -487,7 +499,7 @@ int main(void)
 
 					}
 
-
+/*
 			snprintf(buffer, 32, "is a command %d", is_a_command);
 			debugPrintln(&huart2, buffer);
 
@@ -502,7 +514,7 @@ int main(void)
 
 					debugPrintln(&huart2, "");
 
-
+*/
 
 
 
@@ -625,7 +637,7 @@ static void MX_ADC1_Init(void)
 
     /**Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time. 
     */
-  sConfig.Channel = ADC_CHANNEL_8;
+  sConfig.Channel = ADC_CHANNEL_2;
   sConfig.Rank = 2;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
@@ -768,26 +780,12 @@ static void MX_TIM5_Init(void)
     _Error_Handler(__FILE__, __LINE__);
   }
 
-  HAL_TIM_MspPostInit(&htim5);
-
-}
-
-/* USART2 init function */
-static void MX_USART2_UART_Init(void)
-{
-
-  huart2.Instance = USART2;
-  huart2.Init.BaudRate = 115200;
-  huart2.Init.WordLength = UART_WORDLENGTH_8B;
-  huart2.Init.StopBits = UART_STOPBITS_1;
-  huart2.Init.Parity = UART_PARITY_NONE;
-  huart2.Init.Mode = UART_MODE_TX_RX;
-  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
-  if (HAL_UART_Init(&huart2) != HAL_OK)
+  if (HAL_TIM_PWM_ConfigChannel(&htim5, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
   }
+
+  HAL_TIM_MspPostInit(&htim5);
 
 }
 
@@ -824,7 +822,6 @@ static void MX_GPIO_Init(void)
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2, GPIO_PIN_RESET);
@@ -839,12 +836,12 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+/*
 void debugPrintln(UART_HandleTypeDef *huart, char _out[]){
  HAL_UART_Transmit(huart, (uint8_t *) _out, strlen(_out), 10);
  char newline[2] = "\r\n";
  HAL_UART_Transmit(huart, (uint8_t *) newline, 2, 10);
-}
+}*/
 /* USER CODE END 4 */
 
 /**
