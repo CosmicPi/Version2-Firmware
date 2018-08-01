@@ -1,3 +1,35 @@
+/**
+  ******************************************************************************
+  * @file    stm32f4xx_it.c
+  * @brief   Interrupt Service Routines.
+  ******************************************************************************
+  *
+  * COPYRIGHT(c) 2018 STMicroelectronics
+  *
+  * Redistribution and use in source and binary forms, with or without modification,
+  * are permitted provided that the following conditions are met:
+  *   1. Redistributions of source code must retain the above copyright notice,
+  *      this list of conditions and the following disclaimer.
+  *   2. Redistributions in binary form must reproduce the above copyright notice,
+  *      this list of conditions and the following disclaimer in the documentation
+  *      and/or other materials provided with the distribution.
+  *   3. Neither the name of STMicroelectronics nor the names of its contributors
+  *      may be used to endorse or promote products derived from this software
+  *      without specific prior written permission.
+  *
+  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  *
+  ******************************************************************************
+  */
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_hal.h"
 #include "stm32f4xx.h"
@@ -20,9 +52,24 @@ int eventstack = 0;
 int gps_ok = 0;         // Chip OK flag
 int pps_recieved = 0;
 long ppcnt = 0;     // PPS count
+
+static unsigned char RxData[64];
+static unsigned char RxIndex = 0;
+
+extern uint32_t received;
+
+extern uint16_t ADCReadings[2]; //ADC Readings
+extern uint8_t SPIReadings[1]; //SPI Readings
+
+extern DMA_HandleTypeDef hadc1;
+extern uint8_t completed1;
+
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern DMA_HandleTypeDef hdma_adc1;
+extern DMA_HandleTypeDef hdma_spi1_rx;
+extern DMA_HandleTypeDef hdma_spi1_tx;
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim5;
 
@@ -93,6 +140,22 @@ void TIM2_IRQHandler(void)
 }
 
 /**
+* @brief This function handles EXTI line[15:10] interrupts.
+*/
+void EXTI15_10_IRQHandler(void)
+{
+  /* USER CODE BEGIN EXTI15_10_IRQn 0 */
+  HAL_ADC_Start_DMA(&hadc1, (uint32_t*) ADCReadings, 2);
+
+  /* USER CODE END EXTI15_10_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_10);
+  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_13);
+  /* USER CODE BEGIN EXTI15_10_IRQn 1 */
+
+  /* USER CODE END EXTI15_10_IRQn 1 */
+}
+
+/**
 * @brief This function handles TIM5 global interrupt.
 */
 void TIM5_IRQHandler(void)
@@ -104,6 +167,55 @@ void TIM5_IRQHandler(void)
   /* USER CODE BEGIN TIM5_IRQn 1 */
 
   /* USER CODE END TIM5_IRQn 1 */
+}
+
+/**
+* @brief This function handles DMA2 stream0 global interrupt.
+*/
+void DMA2_Stream0_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA2_Stream0_IRQn 0 */
+  // ADC
+	char buffer[32];
+	snprintf(buffer, 32, "%d", ADCReadings[0]);
+	debugPrintln(&huart2, buffer);
+
+	snprintf(buffer, 32, "%d", ADCReadings[1]);
+	debugPrintln(&huart2, buffer);
+	completed1 =1;
+  /* USER CODE END DMA2_Stream0_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_adc1);
+  /* USER CODE BEGIN DMA2_Stream0_IRQn 1 */
+
+  /* USER CODE END DMA2_Stream0_IRQn 1 */
+}
+
+/**
+* @brief This function handles DMA2 stream2 global interrupt.
+*/
+void DMA2_Stream2_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA2_Stream2_IRQn 0 */
+
+  /* USER CODE END DMA2_Stream2_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_spi1_rx);
+  /* USER CODE BEGIN DMA2_Stream2_IRQn 1 */
+
+  /* USER CODE END DMA2_Stream2_IRQn 1 */
+}
+
+/**
+* @brief This function handles DMA2 stream3 global interrupt.
+*/
+void DMA2_Stream3_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA2_Stream3_IRQn 0 */
+
+  /* USER CODE END DMA2_Stream3_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_spi1_tx);
+  /* USER CODE BEGIN DMA2_Stream3_IRQn 1 */
+
+  /* USER CODE END DMA2_Stream3_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */
@@ -145,7 +257,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *tim_handle)
 				//__HAL_TIM_SetCounter(tim_handle, 0);    //reset counter after input capture interrupt occurs
 
 
-				//HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+				HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_2);
 
 				//uint16_t this_tach_timer_value = HAL_TIM_ReadCapturedValue(tim_handle, TIM_CHANNEL_1);
 
@@ -268,7 +380,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *tim_handle)
 				//__HAL_TIM_SetCounter(tim_handle, 0);    //reset counter after input capture interrupt occurs
 
 
-				//HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+				HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_1);
 
 				//uint16_t this_tach_timer_value = HAL_TIM_ReadCapturedValue(tim_handle, TIM_CHANNEL_1);
 
@@ -328,6 +440,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *tim_handle)
     if (tim_handle == &htim5)
     {
 
+
+
+		//debugPrintln(&huart2, data_out1);
+
 		if (pll_flag == 0) {
 			/* RESET OTHER TIMERS */
 			//__HAL_TIM_SetCounter(&htim2, 0);
@@ -368,4 +484,4 @@ void debugPrintln(UART_HandleTypeDef *huart, char _out[]){
  HAL_UART_Transmit(huart, (uint8_t *) newline, 2, 10);
 }
 /* USER CODE END 1 */
-/*****************************END OF FILE****/
+/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
