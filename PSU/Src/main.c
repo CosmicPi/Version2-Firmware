@@ -82,6 +82,7 @@ uint8_t spi_transmit_receive;
 
 uint32_t spi_received_value;
 uint8_t spi_began = 0;
+uint8_t state = 1;
 
 uint16_t ack = 0;
 uint8_t command = 0;
@@ -252,224 +253,202 @@ int main(void)
 		  	 */
 		  	spi_received_value = SPI_rx[0];
 
-		  	command = 0;
+			switch(state){
 
-			switch(command){
-
-					case 0:
+					default:
 						  if (spi_received_value > 0 && spi_received_value < 19){
 							  command = spi_received_value;
-							  command_treated = command;
 							  is_a_command = 1;
 						  }else{
 
 							  is_a_command = 0;
 							  data = spi_received_value;
-							  command = command_treated;
 
 							  if (spi_began == 0){
 								  ack = 0;
 								  break;
 							  }
+
 						  }
 
-					// Set Duty cycle MSB for the PWM of HV1
+
 					case 1:
+						// Set Duty cycle MSB for the PWM of HV1
+						if (command == 1){
+							if(is_a_command){
+								ack=command;
+							}else{
+								// Delete old MSB
+								duty_cycle_channel_A = duty_cycle_channel_A & 0x0000FFFF;
+								// Set the new one
+								duty_cycle_channel_A = (data << 16) | duty_cycle_channel_A;
 
-						if(is_a_command){
-							ack=command;
-						}else{
-							duty_cycle_channel_A = data << 16;
-							ack=0;
-						}
-
-						break;
-
-					// Set Duty cycle LSB for the PWM of HV1
-					case 2:
-
-						if(is_a_command){
-							ack=command;
-						}else{
-							duty_cycle_channel_A = duty_cycle_channel_A | data ;
-						  __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_1, duty_cycle_channel_A);
-
-						  	duty_cycle_channel_A = 0;
-							ack = 0;
+								ack=0;
 							}
 
-						break;
 
-					// Set Duty cycle MSB for the PWM of HV2
-					case 3:
+						// Set Duty cycle LSB for the PWM of HV1
+						}else if (command == 2){
 
-						if(is_a_command){
-							ack=command;
-						}else{
+							if(is_a_command){
+								ack=command;
+							}else{
 
-							duty_cycle_channel_B = data << 16;
+								// Delete old LSB
+							  	duty_cycle_channel_A = duty_cycle_channel_A & 0xFFFF0000;
+							  	// Set the new one
+								duty_cycle_channel_A = duty_cycle_channel_A | data ;
 
-							ack = 0;
+							  __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_1, duty_cycle_channel_A);
+
+								ack = 0;
+								}
+
+						// Set Duty cycle MSB for the PWM of HV2
+						}else if (command == 3){
+
+							if(is_a_command){
+								ack=command;
+							}else{
+
+								// Delete old MSB
+								duty_cycle_channel_B = duty_cycle_channel_B & 0x0000FFFF;
+								// Set the new one
+								duty_cycle_channel_B = (data << 16) | duty_cycle_channel_B;
+
+								ack = 0;
+
+								}
+
+						// Set Duty cycle LSB for the PWM of HV2
+						}else if (command == 4){
+
+							if(is_a_command){
+								ack=command;
+							}else{
+								// Delete old LSB
+								duty_cycle_channel_B = duty_cycle_channel_B & 0xFFFF0000;
+								// Set the new one
+								duty_cycle_channel_B = duty_cycle_channel_A | data ;
+
+							  __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_4, duty_cycle_channel_B);
+
+
+								ack = 0;
 
 							}
 
-						break;
+						// Set Duty cycle for the PWM of the LED
+						}else if (command == 5){
 
-					// Set Duty cycle LSB for the PWM of HV2
-					case 4:
+							if(is_a_command == 1){
+								ack=command;
+							}else{
+								duty_cycle_LED = data;
+								 __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, duty_cycle_LED);
 
-						if(is_a_command){
-							ack=command;
-						}else{
-							duty_cycle_channel_B = duty_cycle_channel_B | data ;
-						  __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_4, duty_cycle_channel_B);
+								 duty_cycle_LED = 0;
 
-						  duty_cycle_channel_B = 0;
+								 ack=0;
+							}
 
-							ack = 0;
+						// Get Duty cycle MSB for the PWM of HV1
+						}else if(command == 6){
 
-						}
-						break;
+							ack = __HAL_TIM_GET_COMPARE(&htim5, TIM_CHANNEL_1) >> 16;
 
-					// Set Duty cycle for the PWM of the LED
-					case 5:
+						// Get Duty cycle LSB for the PWM of HV1
+						}else if (command == 7){
 
-						if(is_a_command == 1){
-							ack=command;
-						}else{
-							duty_cycle_LED = data;
-							 __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, duty_cycle_LED);
-
-							 duty_cycle_LED = 0;
-
-							 ack=0;
-						}
-
-						break;
-
-					// Get Duty cycle MSB for the PWM of HV1
-					case 6:
-
-						ack = __HAL_TIM_GET_COMPARE(&htim5, TIM_CHANNEL_1) >> 16;
-
-						break;
-
-					// Get Duty cycle LSB for the PWM of HV1
-					case 7:
 							ack = __HAL_TIM_GET_COMPARE(&htim5, TIM_CHANNEL_1) & 0x0000FFFF;
 
-						break;
+						// Get Duty cycle MSB for the PWM of HV2
+						}else if (command == 8){
 
-					// Get Duty cycle MSB for the PWM of HV2
-					case 8:
+							ack = __HAL_TIM_GET_COMPARE(&htim5, TIM_CHANNEL_4) >> 16;
 
-						ack = __HAL_TIM_GET_COMPARE(&htim5, TIM_CHANNEL_4) >> 16;
+						// Get Duty cycle MSB for the PWM of HV2
+						}else if (command == 9){
 
-						break;
+							ack = __HAL_TIM_GET_COMPARE(&htim5, TIM_CHANNEL_4) & 0x0000FFFF;
 
-					// Get Duty cycle MSB for the PWM of HV2
-					case 9:
+						// Get Duty cycle LSB for the PWM of HV2
+						}else if(command == 10){
+							ack = __HAL_TIM_GET_COMPARE(&htim1, TIM_CHANNEL_1);
+						// Set Status register controlling PWMs
+						}else if(command == 11){
 
-						ack = __HAL_TIM_GET_COMPARE(&htim5, TIM_CHANNEL_4) & 0x0000FFFF;
+							if(is_a_command){
+								ack=command;
+							}else{
+								enable_channels = data;
 
-						break;
+								enable_channel_A = data & 1;
+								enable_channel_B = data>>1 & 1;
 
-					// Get Duty cycle LSB for the PWM of HV2
-					case 10:
+								if (enable_channel_A == 1)
+									HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_SET);
+								else
+									HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_RESET);
 
-						ack = __HAL_TIM_GET_COMPARE(&htim1, TIM_CHANNEL_1);
+								if (enable_channel_B == 1)
+									HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET);
+								else
+									HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_RESET);
 
-						break;
+								ack = 0;
+							}
+						// Get Status register controlling PWMs				}
+						}else if (command == 12){
 
-					// Set Status register controlling PWMs
-					case 11:
-						if(is_a_command){
-							ack=command;
-						}else{
-							enable_channels = data;
+							ack = enable_channels;
 
-							enable_channel_A = data & 1;
-							enable_channel_B = data>>1 & 1;
+						// Get ADC value channel 1
+						}else if(command == 13){
 
-							if (enable_channel_A == 1)
-								HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_SET);
-							else
-								HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_RESET);
+							ack = ADCReadings[0];
 
-							if (enable_channel_B == 1)
-								HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET);
-							else
-								HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_RESET);
+						// Get ADC value channel 2
+						}else if(command == 14){
 
-							ack = 0;
+							ack = ADCReadings[1];
+
+						// Set PWM period MSB for HV1 and HV2
+						}else if(command == 15){
+
+							if(is_a_command){
+								ack=command;
+							}else{
+								HV_PWM_frequency = data << 16;
+								ack=0;
+							}
+
+						// Set PWM period LSB for HV1 and HV2
+						}else if(command == 16){
+
+							if(is_a_command){
+								ack=command;
+							}else{
+								HV_PWM_frequency = HV_PWM_frequency | data ;
+							  __HAL_TIM_SET_AUTORELOAD(&htim5, HV_PWM_frequency);
+
+								ack = 0;
+							}
+
+						// GET PWM period MSB of HV1 and HV2
+						}else if(command == 17){
+
+							ack = __HAL_TIM_GET_AUTORELOAD(&htim5) >> 16;
+
+						// GET PWM period LSB of HV1 and HV2
+						}else if(command == 18){
+
+							ack = __HAL_TIM_GET_AUTORELOAD(&htim5) & 0x0000FFFF;
+
 						}
 
 						break;
 
-					// Get Status register controlling PWMs
-					case 12:
-
-						ack = enable_channels;
-
-						break;
-
-					// Get ADC value channel 1
-					case 13:
-
-						ack = ADCReadings[0];
-
-						break;
-
-					// Get ADC value channel 2
-					case 14:
-
-						ack = ADCReadings[1];
-
-						break;
-
-					// Set PWM period MSB for HV1 and HV2
-					case 15:
-
-						if(is_a_command){
-							ack=command;
-						}else{
-							HV_PWM_frequency = data << 16;
-							ack=0;
-						}
-
-
-
-						break;
-
-					// Set PWM period LSB for HV1 and HV2
-					case 16:
-
-						if(is_a_command){
-							ack=command;
-						}else{
-							HV_PWM_frequency = HV_PWM_frequency | data ;
-						  __HAL_TIM_SET_AUTORELOAD(&htim5, HV_PWM_frequency);
-
-							ack = 0;
-						}
-						break;
-
-					// GET PWM period MSB of HV1 and HV2
-					case 17:
-
-						ack = __HAL_TIM_GET_AUTORELOAD(&htim5) >> 16;
-
-						break;
-
-					// GET PWM period LSB of HV1 and HV2
-					case 18:
-						ack = __HAL_TIM_GET_AUTORELOAD(&htim5) & 0x0000FFFF;
-
-						break;
-
-					default:
-						ack = 0;
-						break;
 
 
 					}
@@ -494,7 +473,6 @@ int main(void)
 
 					SPI_tx[0]=ack;
 
-					is_a_command ^= 1;
 					spi_began = 1;
 
 				  while (HAL_SPI_GetState(&hspi1) != HAL_SPI_STATE_READY)
