@@ -48,7 +48,6 @@
 /* Exported functions ------------------------------------------------------- */
 
 void SysTick_Handler(void);
-void DMA2_Stream0_IRQHandler(void);
 void DMA2_Stream2_IRQHandler(void);
 void DMA2_Stream3_IRQHandler(void);
 
