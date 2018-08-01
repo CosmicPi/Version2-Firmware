@@ -255,7 +255,7 @@ int main(void)
 
 			switch(state){
 
-					default:
+					case 1:
 						  if (spi_received_value > 0 && spi_received_value < 19){
 							  command = spi_received_value;
 							  is_a_command = 1;
@@ -270,9 +270,6 @@ int main(void)
 							  }
 
 						  }
-
-
-					case 1:
 						// Set Duty cycle MSB for the PWM of HV1
 						if (command == 1){
 							if(is_a_command){
@@ -448,6 +445,11 @@ int main(void)
 						}
 
 						break;
+
+					default:
+						ack = 0;
+						break;
+
 
 
 
