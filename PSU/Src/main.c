@@ -70,6 +70,7 @@ uint32_t duty_cycle_channel_A = 0;
 
 //uint32_t duty_cycle_channel_B = 56;
 uint32_t duty_cycle_channel_B = 0;
+uint32_t temp_MSB = 0;
 
 uint8_t enable_channel_A = 0;
 uint8_t enable_channel_B = 0;
@@ -280,7 +281,12 @@ int main(void)
 						if(is_a_command){
 							ack=command;
 						}else{
-							duty_cycle_channel_A = data << 16;
+							// Delete old MSB
+							duty_cycle_channel_A = duty_cycle_channel_A & 0x0000FFFF;
+							// Set the new one
+							temp_MSB = data;
+							duty_cycle_channel_A = (temp_MSB << 16) | duty_cycle_channel_A;
+
 							ack=0;
 						}
 
@@ -292,7 +298,11 @@ int main(void)
 						if(is_a_command){
 							ack=command;
 						}else{
+							// Delete old LSB
+						  	duty_cycle_channel_A = duty_cycle_channel_A & 0xFFFF0000;
+						  	// Set the new one
 							duty_cycle_channel_A = duty_cycle_channel_A | data ;
+
 						  __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_1, duty_cycle_channel_A);
 
 							ack = 0;
@@ -307,7 +317,11 @@ int main(void)
 							ack=command;
 						}else{
 
-							duty_cycle_channel_B = data << 16;
+							// Delete old MSB
+							duty_cycle_channel_B = duty_cycle_channel_B & 0x0000FFFF;
+							// Set the new one
+							temp_MSB = data;
+							duty_cycle_channel_B = (temp_MSB << 16) | duty_cycle_channel_B;
 
 							ack = 0;
 
@@ -321,7 +335,12 @@ int main(void)
 						if(is_a_command){
 							ack=command;
 						}else{
+							// Delete old LSB
+							duty_cycle_channel_B = duty_cycle_channel_B & 0xFFFF0000;
+							// Set the new one
 							duty_cycle_channel_B = duty_cycle_channel_B | data ;
+
+
 						  __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_4, duty_cycle_channel_B);
 
 							ack = 0;
