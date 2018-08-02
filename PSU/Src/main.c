@@ -46,6 +46,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
+DMA_HandleTypeDef hdma_adc1;
 
 SPI_HandleTypeDef hspi1;
 DMA_HandleTypeDef hdma_spi1_rx;
@@ -64,10 +65,10 @@ uint16_t SPI_rx[1]; //ADC Readings
 uint16_t duty_cycle_LED = 0;
 
 //uint32_t duty_cycle_channel_A = 56;
-uint32_t duty_cycle_channel_A = 0;
+uint32_t duty_cycle_channel_A = 30;
 
 //uint32_t duty_cycle_channel_B = 56;
-uint32_t duty_cycle_channel_B = 0;
+uint32_t duty_cycle_channel_B = 30;
 uint32_t temp_MSB = 0;
 
 uint8_t enable_channel_A = 0;
@@ -76,7 +77,7 @@ uint8_t enable_channel_B = 0;
 uint8_t enable_channels = 0;
 
 //uint32_t HV_PWM_frequency = 280;
-uint32_t HV_PWM_frequency = 0;
+uint32_t HV_PWM_frequency = 400;
 
 uint8_t spi_transmit_receive;
 
@@ -513,9 +514,9 @@ int main(void)
 					debugPrintln(&huart2, buffer);
 
 					debugPrintln(&huart2, "");
+
+
 */
-
-
 
 
 					SPI_tx[0]=ack;
@@ -637,6 +638,7 @@ static void MX_ADC1_Init(void)
 
     /**Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time. 
     */
+  sConfig.Channel = ADC_CHANNEL_2;
   sConfig.Rank = 2;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
@@ -797,6 +799,9 @@ static void MX_DMA_Init(void)
   __HAL_RCC_DMA2_CLK_ENABLE();
 
   /* DMA interrupt init */
+  /* DMA2_Stream0_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
   /* DMA2_Stream2_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);

@@ -42,6 +42,7 @@ extern SPI_HandleTypeDef hspi1;
 
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim5;
+//extern UART_HandleTypeDef huart2;
 
 
 extern uint8_t spi_transmit_receive;
@@ -54,6 +55,7 @@ extern uint8_t adc_completed; //ADC Readings
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern DMA_HandleTypeDef hdma_adc1;
 extern DMA_HandleTypeDef hdma_spi1_rx;
 extern DMA_HandleTypeDef hdma_spi1_tx;
 
@@ -82,6 +84,20 @@ void SysTick_Handler(void)
 /* For the available peripheral interrupt handler names,                      */
 /* please refer to the startup file (startup_stm32f4xx.s).                    */
 /******************************************************************************/
+
+/**
+* @brief This function handles DMA2 stream0 global interrupt.
+*/
+void DMA2_Stream0_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA2_Stream0_IRQn 0 */
+
+  /* USER CODE END DMA2_Stream0_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_adc1);
+  /* USER CODE BEGIN DMA2_Stream0_IRQn 1 */
+
+  /* USER CODE END DMA2_Stream0_IRQn 1 */
+}
 
 /**
 * @brief This function handles DMA2 stream2 global interrupt.
@@ -132,8 +148,8 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 	debugPrintln(&huart2, buffer);
 
 	debugPrintln(&huart2, "\n");
-*/
 
+*/
 	//ADCReadings[0] = ADC_DMA_buffer[0];
 	//ADCReadings[1] = ADC_DMA_buffer[1];
 	adc_completed=1;
@@ -142,12 +158,6 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 
 
 }
-/*
-void debugPrintln(UART_HandleTypeDef *huart, char _out[]){
- HAL_UART_Transmit(huart, (uint8_t *) _out, strlen(_out), 10);
- char newline[2] = "\r\n";
- HAL_UART_Transmit(huart, (uint8_t *) newline, 2, 10);
-}
-*/
+
 /* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
