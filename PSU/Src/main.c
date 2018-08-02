@@ -205,9 +205,9 @@ int main(void)
 	_Error_Handler(__FILE__, __LINE__);
   }
 
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_SET);
 
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET);
 
   SPI_tx[0] = 255;
   //  HAL_SPI_Receive_DMA(&hspi1, (uint16_t*)&SPI_rx, 1);
